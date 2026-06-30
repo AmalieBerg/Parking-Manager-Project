@@ -1,0 +1,224 @@
+@startuml EV_Charging_Domain_Model
+
+title EV Charging Context - Domain Model
+
+skinparam class {
+    BackgroundColor<<AggregateRoot>> LightBlue
+    BackgroundColor<<Entity>> LightYellow
+    BackgroundColor<<ValueObject>> LightGreen
+    BackgroundColor<<Enum>> LightGray
+    BackgroundColor<<DomainService>> LightCoral
+    BorderColor Black
+}
+
+' Aggregate Root
+class ChargingStation <<AggregateRoot>> {
+    - stationId: StationId
+    - stationCode: String
+    - location: Location
+    - connectorType: ConnectorType
+    - maxPowerOutput: PowerOutput
+    - status: StationStatus
+    - currentSession: ChargingSession?
+    --
+    + startCharging(vehicle: ElectricVehicle, targetLevel: Percentage?): ChargingSession
+    + stopCharging(): ChargingSession
+    + updateSession(batteryLevel: Percentage)
+    + isAvailable(): boolean
+    + getChargingRate(): PowerOutput
+    + markOffline()
+    + markOnline()
+}
+
+' Entities
+class ChargingSession <<Entity>> {
+    - sessionId: SessionId
+    - station: ChargingStation
+    - vehicle: ElectricVehicle
+    - startTime: DateTime
+    - endTime: DateTime?
+    - startBatteryLevel: Percentage
+    - currentBatteryLevel: Percentage
+    - targetBatteryLevel: Percentage?
+    - energyConsumed: Energy
+    - averageChargingRate: PowerOutput
+    - status: SessionStatus
+    --
+    + updateBatteryLevel(percentage: Percentage)
+    + complete(): ChargingSession
+    + interrupt(): ChargingSession
+    + calculateDuration(): Duration
+    + calculateEnergyConsumed(): Energy
+    + isComplete(): boolean
+    + hasReachedTarget(): boolean
+}
+
+class ElectricVehicle <<Entity>> {
+    - vehicleId: VehicleId
+    - registrationNumber: RegistrationNumber
+    - batteryCapacity: BatteryCapacity
+    - connectorType: ConnectorType
+    - currentChargeLevel: Percentage
+    - maxChargingRate: PowerOutput
+    --
+    + updateChargeLevel(percentage: Percentage)
+    + requiresCharging(): boolean
+    + isFullyCharged(): boolean
+    + isCompatible(station: ChargingStation): boolean
+    + estimateChargingTime(target: Percentage, rate: PowerOutput): Duration
+}
+
+' Domain Services
+class ChargingSessionService <<DomainService>> {
+    --
+    + initiateCharging(station: ChargingStation, vehicle: ElectricVehicle, target: Percentage?): Result<ChargingSession>
+    + monitorCharging(session: ChargingSession): SessionStatus
+    + calculateOptimalChargingRate(vehicle: ElectricVehicle, station: ChargingStation): PowerOutput
+}
+
+class StationAvailabilityService <<DomainService>> {
+    --
+    + findAvailableStation(location: Location, connectorType: ConnectorType): List<ChargingStation>
+    + predictAvailability(stationId: StationId, time: DateTime): boolean
+}
+
+' Value Objects
+class StationId <<ValueObject>> {
+    - value: UUID
+    --
+    + equals(other: StationId): boolean
+}
+
+class SessionId <<ValueObject>> {
+    - value: UUID
+    --
+    + equals(other: SessionId): boolean
+}
+
+class Location <<ValueObject>> {
+    - facilityId: FacilityId
+    - level: int
+    - zone: String
+    --
+    + toString(): String
+}
+
+class PowerOutput <<ValueObject>> {
+    - kW: double
+    --
+    + toWatts(): double
+    + getChargingLevel(): ChargingLevel
+}
+
+class Energy <<ValueObject>> {
+    - kWh: double
+    --
+    + add(other: Energy): Energy
+    + subtract(other: Energy): Energy
+}
+
+class Duration <<ValueObject>> {
+    - minutes: int
+    --
+    + toHours(): double
+    + add(other: Duration): Duration
+}
+
+class Percentage <<ValueObject>> {
+    - value: double
+    --
+    + validate(): boolean
+    + add(increment: double): Percentage
+}
+
+class BatteryCapacity <<ValueObject>> {
+    - kWh: double
+    --
+    + calculateEnergyNeeded(currentLevel: Percentage, targetLevel: Percentage): Energy
+}
+
+' Enumerations
+enum StationStatus <<Enum>> {
+    AVAILABLE
+    CHARGING
+    OFFLINE
+    MAINTENANCE
+    RESERVED
+}
+
+enum SessionStatus <<Enum>> {
+    IN_PROGRESS
+    COMPLETED
+    INTERRUPTED
+    FAILED
+    TARGET_REACHED
+}
+
+enum ConnectorType <<Enum>> {
+    TYPE1
+    TYPE2
+    CCS
+    CHAdeMO
+    TESLA
+}
+
+enum ChargingLevel <<Enum>> {
+    LEVEL1_SLOW
+    LEVEL2_NORMAL
+    DC_FAST
+    DC_ULTRA_FAST
+}
+
+' Relationships
+ChargingStation "1" *-- "0..1" ChargingSession : manages
+ChargingSession --> ElectricVehicle : charges
+ChargingSession --> SessionId : has
+ChargingSession --> SessionStatus : has
+ChargingSession --> Energy : consumes
+ChargingSession --> Duration : has
+
+ChargingStation --> StationId : has
+ChargingStation --> Location : located at
+ChargingStation --> ConnectorType : supports
+ChargingStation --> PowerOutput : provides
+ChargingStation --> StationStatus : has
+
+ElectricVehicle --> BatteryCapacity : has
+ElectricVehicle --> ConnectorType : requires
+ElectricVehicle --> Percentage : has
+ElectricVehicle --> PowerOutput : supports
+
+ChargingSessionService ..> ChargingStation : uses
+ChargingSessionService ..> ElectricVehicle : uses
+ChargingSessionService ..> ChargingSession : creates
+
+StationAvailabilityService ..> ChargingStation : queries
+
+PowerOutput --> ChargingLevel : categorizes
+
+note top of ChargingStation
+  **Aggregate Root**
+  All charging operations must go
+  through ChargingStation
+  
+  **Invariants:**
+  - Only one active session at a time
+  - Cannot start if station unavailable
+  - Battery level cannot decrease
+  - Power output ≤ max capacity
+end note
+
+note right of ChargingSession
+  **Business Rules:**
+  - Session automatically completes
+    when target level reached
+  - If no target, charge to 100%
+  - Track energy consumption for billing
+end note
+
+note bottom of ElectricVehicle
+  Vehicle must be compatible with
+  station connector type to charge
+end note
+
+@enduml

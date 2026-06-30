@@ -1,0 +1,145 @@
+@startuml Original_Class_Diagram
+
+title Original Parking Lot Manager - Class Diagram (Before Refactoring)
+
+skinparam classAttributeIconSize 0
+
+class ParkingLot {
+  - capacity: int
+  - evCapacity: int
+  - level: int
+  - slotid: int
+  - slotEvId: int
+  - numOfOccupiedSlots: int
+  - numOfOccupiedEvSlots: int
+  - slots: list
+  - evSlots: list
+  __
+  + createParkingLot(capacity, evcapacity, level)
+  + getEmptySlot()
+  + getEmptyEvSlot()
+  + getEmptyLevel()
+  + park(regnum, make, model, color, ev, motor)
+  + leave(slotid, ev)
+  + edit(slotid, regnum, make, model, color, ev)
+  + status()
+  + chargeStatus()
+  + getRegNumFromColor(color)
+  + getSlotNumFromRegNum(regnum)
+  + getSlotNumFromColor(color)
+  + getSlotNumFromMake(make)
+  + getSlotNumFromModel(model)
+  + getRegNumFromColorEv(color)
+  + getSlotNumFromRegNumEv(regnum)
+  + getSlotNumFromColorEv(color)
+  + getSlotNumFromMakeEv(make)
+  + getSlotNumFromModelEv(model)
+  + slotNumByReg()
+  + slotNumByColor()
+  + regNumByColor()
+  + makeLot()
+  + parkCar()
+  + removeCar()
+}
+
+class Vehicle {
+  - color: string
+  - regnum: string
+  - make: string
+  - model: string
+  __
+  + getMake()
+  + getModel()
+  + getColor()
+  + getRegNum()
+}
+
+class Car {
+  __
+  + getType()
+}
+
+class Motorcycle {
+  __
+  + getType()
+}
+
+class Truck {
+  __
+  + getType()
+}
+
+class Bus {
+  __
+  + getType()
+}
+
+class ElectricVehicle {
+  - color: string
+  - regnum: string
+  - make: string
+  - model: string
+  - charge: int
+  __
+  + getMake()
+  + getModel()
+  + getColor()
+  + getRegNum()
+  + setCharge(charge)
+  + getCharge()
+}
+
+class ElectricCar {
+  __
+  + getType()
+}
+
+class ElectricBike {
+  __
+  + getType()
+}
+
+note top of ParkingLot
+  GOD CLASS ANTI-PATTERN
+  - 40+ methods
+  - Mixed responsibilities:
+    * Business logic
+    * Data persistence
+    * UI interaction
+  - Tight coupling with tkinter
+  - Global state management
+end note
+
+Vehicle <|-- Car
+Vehicle <|-- Motorcycle
+Vehicle <|-- Truck
+Vehicle <|-- Bus
+
+ElectricVehicle <|-- ElectricCar
+ElectricVehicle <|-- ElectricBike
+
+note bottom of ElectricVehicle
+  BROKEN INHERITANCE
+  - Does not extend Vehicle
+  - Duplicated attributes
+  - Parallel hierarchy
+end note
+
+ParkingLot "1" *-- "*" Vehicle : stores in slots
+ParkingLot "1" *-- "*" ElectricVehicle : stores in evSlots
+
+note bottom
+  ISSUES:
+  1. God Class - ParkingLot handles everything
+  2. Tight coupling with UI (tkinter)
+  3. No separation of concerns
+  4. Broken inheritance hierarchy
+  5. Global variables in module
+  6. No abstraction for data access
+  7. Mixed business and presentation logic
+  8. Hard to test
+  9. Hard to extend
+  10. Poor maintainability
+end note
+
+@enduml

@@ -1,0 +1,96 @@
+@startuml Refactored_Sequence_Diagram
+
+title Refactored System - Park Vehicle Sequence (With Design Patterns)
+
+actor User
+participant "View\n(ParkingView)" as View
+participant "Presenter\n(ParkingPresenter)" as Presenter
+participant "Factory\n(VehicleFactory)" as Factory
+participant "Repository\n(IVehicleRepository)" as Repo
+database "Storage" as DB
+
+User -> View: Click "Park Vehicle"
+activate View
+
+View -> View: Validate input locally
+View -> View: Get form values
+
+View -> Presenter: park_vehicle(reg, make, model, color, is_ev, is_motor)
+activate Presenter
+
+Presenter -> Repo: find_empty_slot(is_ev)
+activate Repo
+Repo -> DB: Query available slots
+DB --> Repo: slot_id or None
+Repo --> Presenter: slot_id or None
+deactivate Repo
+
+alt Slot available
+    Presenter -> Factory: create_vehicle(type, reg, make, model, color)
+    activate Factory
+    
+    alt Electric vehicle
+        alt Motorcycle
+            Factory -> Factory: Create ElectricBike
+        else Car
+            Factory -> Factory: Create ElectricCar
+        end
+    else Regular vehicle
+        alt Motorcycle
+            Factory -> Factory: Create Motorcycle
+        else Car
+            Factory -> Factory: Create Car
+        end
+    end
+    
+    Factory --> Presenter: vehicle instance
+    deactivate Factory
+    
+    Presenter -> Repo: save(vehicle, slot_id, is_ev)
+    activate Repo
+    Repo -> DB: Store vehicle in slot
+    DB --> Repo: success
+    Repo --> Presenter: success
+    deactivate Repo
+    
+    Presenter -> View: display_message("Allocated slot: " + slot_id)
+    
+else No slot available
+    Presenter -> View: display_message("Parking lot is full")
+end
+
+deactivate Presenter
+
+View -> View: Update UI with message
+View --> User: Display result
+deactivate View
+
+note right of Presenter
+  BENEFITS:
+  1. Separated concerns
+  2. Business logic independent of UI
+  3. Repository abstracts storage
+  4. Factory centralizes creation
+  5. Easy to test each layer
+  6. Can swap implementations
+  7. No tight coupling
+end note
+
+note right of View
+  View responsibilities:
+  - Display UI
+  - Collect input
+  - Call presenter
+  - Show results
+  (No business logic!)
+end note
+
+note right of Repo
+  Repository benefits:
+  - Abstracts data access
+  - Can switch storage
+  - Mockable for testing
+  - Transaction support
+end note
+
+@enduml

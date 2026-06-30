@@ -1,0 +1,254 @@
+@startuml Parking_Operations_Domain_Model
+
+title Parking Operations Context - Domain Model
+
+skinparam class {
+    BackgroundColor<<AggregateRoot>> LightBlue
+    BackgroundColor<<Entity>> LightYellow
+    BackgroundColor<<ValueObject>> LightGreen
+    BackgroundColor<<Enum>> LightGray
+    BorderColor Black
+}
+
+' Aggregate Root
+class ParkingFacility <<AggregateRoot>> {
+    - facilityId: FacilityId
+    - name: String
+    - address: Address
+    - levels: List<ParkingLevel>
+    - operatingHours: OperatingHours
+    - status: FacilityStatus
+    --
+    + addLevel(level: ParkingLevel)
+    + removeLevel(levelId: LevelId)
+    + getTotalCapacity(): int
+    + getAvailableSlots(): int
+    + getOccupancyRate(): Percentage
+    + findAvailableSlot(slotType: SlotType): ParkingSlot?
+}
+
+' Entities
+class ParkingLevel <<Entity>> {
+    - levelId: LevelId
+    - levelNumber: int
+    - facility: ParkingFacility
+    - regularSlots: List<ParkingSlot>
+    - evSlots: List<EVParkingSlot>
+    - status: LevelStatus
+    --
+    + addSlot(slot: ParkingSlot)
+    + removeSlot(slotId: SlotId)
+    + getAvailableSlots(slotType: SlotType): List<ParkingSlot>
+    + getCapacity(): int
+    + getOccupiedCount(): int
+    + enable()
+    + disable()
+}
+
+abstract class ParkingSlot <<Entity>> {
+    - slotId: SlotId
+    - slotNumber: String
+    - level: ParkingLevel
+    - slotType: SlotType
+    - currentVehicle: Vehicle?
+    - status: SlotStatus
+    - entryTime: DateTime?
+    --
+    + park(vehicle: Vehicle): Result
+    + release(): Vehicle
+    + isAvailable(): boolean
+    + isOccupied(): boolean
+    + markForMaintenance()
+    + clearMaintenance()
+}
+
+class EVParkingSlot <<Entity>> {
+    - chargingStationId: ChargingStationId?
+    - hasCharger: boolean
+    --
+    + assignChargingStation(stationId: ChargingStationId)
+    + removeChargingStation()
+    + canCharge(): boolean
+}
+
+abstract class Vehicle <<Entity>> {
+    - vehicleId: VehicleId
+    - registrationNumber: RegistrationNumber
+    - make: String
+    - model: String
+    - color: Color
+    - vehicleType: VehicleType
+    --
+    + getType(): VehicleType
+    + matches(registration: RegistrationNumber): boolean
+}
+
+class ElectricVehicle <<Entity>> {
+    - batteryCapacity: BatteryCapacity
+    - connectorType: ConnectorType
+    - currentChargeLevel: Percentage
+    --
+    + updateChargeLevel(percentage: Percentage)
+    + requiresCharging(): boolean
+    + isFullyCharged(): boolean
+}
+
+class RegularVehicle <<Entity>> {
+    --
+}
+
+' Value Objects
+class FacilityId <<ValueObject>> {
+    - value: UUID
+    --
+    + equals(other: FacilityId): boolean
+}
+
+class LevelId <<ValueObject>> {
+    - value: UUID
+    --
+    + equals(other: LevelId): boolean
+}
+
+class SlotId <<ValueObject>> {
+    - value: UUID
+    --
+    + equals(other: SlotId): boolean
+}
+
+class VehicleId <<ValueObject>> {
+    - value: UUID
+    --
+    + equals(other: VehicleId): boolean
+}
+
+class RegistrationNumber <<ValueObject>> {
+    - value: String
+    --
+    + format(): String
+    + validate(): boolean
+}
+
+class Address <<ValueObject>> {
+    - street: String
+    - city: String
+    - state: String
+    - zipCode: String
+    - country: String
+    --
+    + format(): String
+}
+
+class OperatingHours <<ValueObject>> {
+    - openTime: Time
+    - closeTime: Time
+    - is24Hours: boolean
+    --
+    + isOpen(currentTime: Time): boolean
+}
+
+class Percentage <<ValueObject>> {
+    - value: double
+    --
+    + validate(): boolean
+}
+
+class Color <<ValueObject>> {
+    - name: String
+    --
+}
+
+class BatteryCapacity <<ValueObject>> {
+    - kWh: double
+    --
+}
+
+' Enumerations
+enum SlotType <<Enum>> {
+    REGULAR
+    EV
+    HANDICAP
+    COMPACT
+    OVERSIZED
+}
+
+enum SlotStatus <<Enum>> {
+    AVAILABLE
+    OCCUPIED
+    RESERVED
+    MAINTENANCE
+}
+
+enum VehicleType <<Enum>> {
+    CAR
+    MOTORCYCLE
+    TRUCK
+    BUS
+}
+
+enum FacilityStatus <<Enum>> {
+    OPEN
+    CLOSED
+    MAINTENANCE
+}
+
+enum LevelStatus <<Enum>> {
+    OPEN
+    CLOSED
+    FULL
+}
+
+enum ConnectorType <<Enum>> {
+    TYPE1
+    TYPE2
+    CCS
+    CHAdeMO
+    TESLA
+}
+
+' Relationships
+ParkingFacility "1" *-- "1..*" ParkingLevel : contains
+ParkingLevel "1" *-- "1..*" ParkingSlot : contains
+ParkingSlot <|-- EVParkingSlot : extends
+ParkingSlot "0..1" o-- "0..1" Vehicle : parks
+Vehicle <|-- ElectricVehicle : extends
+Vehicle <|-- RegularVehicle : extends
+
+ParkingFacility --> FacilityId : has
+ParkingFacility --> Address : has
+ParkingFacility --> OperatingHours : has
+ParkingFacility --> FacilityStatus : has
+
+ParkingLevel --> LevelId : has
+ParkingLevel --> LevelStatus : has
+
+ParkingSlot --> SlotId : has
+ParkingSlot --> SlotType : has
+ParkingSlot --> SlotStatus : has
+
+Vehicle --> VehicleId : has
+Vehicle --> RegistrationNumber : has
+Vehicle --> Color : has
+Vehicle --> VehicleType : has
+
+ElectricVehicle --> BatteryCapacity : has
+ElectricVehicle --> ConnectorType : has
+ElectricVehicle --> Percentage : has
+
+note top of ParkingFacility
+  **Aggregate Root**
+  All operations on levels and slots
+  must go through ParkingFacility
+  
+  **Invariants:**
+  - Total slots ≤ physical capacity
+  - Slot numbers unique within level
+  - One vehicle per slot maximum
+end note
+
+note bottom of EVParkingSlot
+  EV slots can optionally have
+  charging stations attached
+end note
+
+@enduml

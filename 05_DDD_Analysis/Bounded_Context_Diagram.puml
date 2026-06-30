@@ -1,0 +1,127 @@
+@startuml Bounded_Context_Diagram
+
+title EasyParkPlus - Bounded Context Diagram
+
+skinparam rectangle {
+    BackgroundColor<< Core >> LightBlue
+    BackgroundColor<< Supporting >> LightYellow
+    BackgroundColor<< Generic >> LightGray
+    BorderColor Black
+    FontSize 12
+}
+
+skinparam arrow {
+    Color Black
+    FontSize 10
+}
+
+' Core Bounded Contexts
+rectangle "**Parking Operations Context**" << Core >> as ParkingOps {
+    [Parking Facility Management]
+    [Slot Allocation]
+    [Occupancy Tracking]
+    [Multi-Level Management]
+}
+
+rectangle "**EV Charging Context**" << Core >> as EVCharging {
+    [Charging Station Management]
+    [Charging Session Tracking]
+    [Battery Level Monitoring]
+    [Power Management]
+}
+
+' Supporting Bounded Contexts
+rectangle "**Customer Management Context**" << Supporting >> as Customer {
+    [Customer Registration]
+    [Vehicle Registration]
+    [Membership Management]
+    [Profile Management]
+}
+
+rectangle "**Facility Management Context**" << Supporting >> as Facility {
+    [Facility Configuration]
+    [Capacity Management]
+    [Maintenance Scheduling]
+    [Access Control]
+}
+
+rectangle "**Billing Context**" << Supporting >> as Billing {
+    [Fee Calculation]
+    [Invoice Generation]
+    [Payment Processing]
+    [Pricing Policies]
+}
+
+' Generic Bounded Contexts
+rectangle "**Notification Service**" << Generic >> as Notification {
+    [Email Notifications]
+    [SMS Notifications]
+    [Push Notifications]
+}
+
+rectangle "**Authentication Context**" << Generic >> as Auth {
+    [User Authentication]
+    [Authorization]
+    [Session Management]
+}
+
+rectangle "**Reporting Context**" << Generic >> as Reporting {
+    [Business Analytics]
+    [Operational Reports]
+    [Financial Reports]
+}
+
+' Relationships
+
+Customer -down-> ParkingOps : "Customer requests\nparking"
+Customer -down-> EVCharging : "Customer requests\nEV charging"
+
+Facility -down-> ParkingOps : "Provides facility\nconfiguration"
+Facility -down-> EVCharging : "Provides station\nconfiguration"
+
+ParkingOps -down-> Billing : "Parking session\nevents"
+EVCharging -down-> Billing : "Charging session\nevents"
+
+ParkingOps -right-> Notification : "Slot status\nevents"
+EVCharging -right-> Notification : "Charging status\nevents"
+Billing -down-> Notification : "Payment\nnotifications"
+
+Auth --> Customer : "Authenticates"
+Auth --> ParkingOps : "Authorizes"
+Auth --> EVCharging : "Authorizes"
+
+ParkingOps -down-> Reporting : "Usage data"
+EVCharging -down-> Reporting : "Charging data"
+Billing -down-> Reporting : "Financial data"
+
+note right of ParkingOps
+  **Core Subdomain**
+  Primary value proposition
+  Competitive advantage
+end note
+
+note right of EVCharging
+  **Core Subdomain**
+  New business extension
+  Market differentiator
+end note
+
+note bottom of Billing
+  **Supporting Subdomain**
+  Essential but not differentiating
+  Domain-specific logic
+end note
+
+note bottom of Notification
+  **Generic Subdomain**
+  Can be outsourced
+  Standard functionality
+end note
+
+legend left
+  |<back:LightBlue> Core </back>| Core business domains |
+  |<back:LightYellow> Supporting </back>| Supporting domains |
+  |<back:LightGray> Generic </back>| Generic domains |
+endlegend
+
+@enduml

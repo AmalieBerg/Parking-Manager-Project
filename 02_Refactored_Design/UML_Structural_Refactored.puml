@@ -1,0 +1,171 @@
+@startuml Refactored_Class_Diagram
+
+title Refactored Parking Lot Manager - Class Diagram (With Design Patterns)
+
+skinparam classAttributeIconSize 0
+skinparam package {
+    BackgroundColor<<MVP>> LightBlue
+    BackgroundColor<<Repository>> LightGreen
+    BackgroundColor<<Factory>> LightYellow
+}
+
+package "Model (Business Logic)" <<MVP>> {
+    class Vehicle {
+        # color: str
+        # reg_num: str
+        # make: str
+        # model: str
+        __
+        + get_make(): str
+        + get_model(): str
+        + get_color(): str
+        + get_reg_num(): str
+        + get_type(): str {abstract}
+    }
+    
+    class Car {
+        + get_type(): str
+    }
+    
+    class Motorcycle {
+        + get_type(): str
+    }
+    
+    class ElectricVehicle {
+        # charge_level: int
+        __
+        + set_charge(level: int)
+        + get_charge(): int
+    }
+    
+    class ElectricCar {
+        + get_type(): str
+    }
+    
+    class ElectricBike {
+        + get_type(): str
+    }
+    
+    class ParkingLot {
+        - facility_id: str
+        - capacity: int
+        - ev_capacity: int
+        - level: int
+        __
+        + get_capacity(): int
+        + get_ev_capacity(): int
+        + get_level(): int
+    }
+}
+
+package "Repository (Data Access)" <<Repository>> {
+    interface IVehicleRepository {
+        + save(vehicle: Vehicle, slot: int): bool
+        + find_by_slot(slot: int): Vehicle
+        + find_by_reg_num(reg_num: str): Vehicle
+        + find_empty_slot(): int
+        + remove(slot: int): bool
+        + get_all_vehicles(): List[Vehicle]
+    }
+    
+    class InMemoryVehicleRepository {
+        - regular_slots: Dict[int, Vehicle]
+        - ev_slots: Dict[int, ElectricVehicle]
+        - capacity: int
+        - ev_capacity: int
+        __
+        + save(vehicle, slot): bool
+        + find_by_slot(slot): Vehicle
+        + find_by_reg_num(reg_num): Vehicle
+        + find_empty_slot(): int
+        + remove(slot): bool
+        + get_all_vehicles(): List[Vehicle]
+    }
+}
+
+package "Factory (Object Creation)" <<Factory>> {
+    class VehicleFactory {
+        + {static} create_vehicle(type: str, ...): Vehicle
+    }
+}
+
+package "Presenter (Coordination)" <<MVP>> {
+    class ParkingPresenter {
+        - repository: IVehicleRepository
+        - parking_lot: ParkingLot
+        - view: ParkingView
+        __
+        + create_parking_lot(capacity, ev_capacity, level)
+        + park_vehicle(reg, make, model, color, is_ev, is_motor)
+        + remove_vehicle(slot, is_ev)
+        + show_status()
+        + show_charge_status()
+        + find_by_registration(reg_num)
+        + find_by_color(color)
+    }
+}
+
+package "View (Presentation)" <<MVP>> {
+    class ParkingView {
+        - presenter: ParkingPresenter
+        - window: tk.Tk
+        __
+        + initialize_ui()
+        + display_message(msg: str)
+        + display_status(vehicles: List)
+        + display_charge_status(vehicles: List)
+        + get_input_values(): Dict
+        + run()
+    }
+}
+
+' Inheritance
+Vehicle <|-- Car
+Vehicle <|-- Motorcycle
+Vehicle <|-- ElectricVehicle
+ElectricVehicle <|-- ElectricCar
+ElectricVehicle <|-- ElectricBike
+
+' Repository pattern
+IVehicleRepository <|.. InMemoryVehicleRepository
+
+' Dependencies
+ParkingPresenter --> IVehicleRepository : uses
+ParkingPresenter --> ParkingLot : manages
+ParkingPresenter --> VehicleFactory : creates vehicles
+ParkingView --> ParkingPresenter : calls
+ParkingPresenter --> ParkingView : updates
+
+note right of Vehicle
+  FIXED INHERITANCE
+  - ElectricVehicle now extends Vehicle
+  - Eliminates code duplication
+  - Proper polymorphism
+  - Uses @property decorators
+end note
+
+note bottom of IVehicleRepository
+  REPOSITORY PATTERN
+  - Abstracts data access
+  - Can swap implementations
+  - Testable with mocks
+  - Supports future DB migration
+end note
+
+note bottom of VehicleFactory
+  FACTORY PATTERN
+  - Centralizes object creation
+  - Single point of change
+  - Hides creation complexity
+  - Type-safe creation
+end note
+
+note top of ParkingPresenter
+  MVP PATTERN
+  - Presenter coordinates
+  - No UI in business logic
+  - View is passive
+  - Testable architecture
+end note
+
+@enduml

@@ -1,0 +1,79 @@
+@startuml Original_Sequence_Diagram
+
+title Original System - Park Vehicle Sequence (Before Refactoring)
+
+actor User
+participant "GUI\n(tkinter)" as GUI
+participant "ParkingLot\n(God Class)" as PL
+database "slots[]\nevSlots[]" as DB
+
+User -> GUI: Click "Park Car"
+activate GUI
+
+GUI -> GUI: Read form values\n(reg, make, model, color, ev, motor)
+
+GUI -> PL: parkCar()
+activate PL
+
+PL -> PL: Get form values from\nglobal variables
+
+alt Electric Vehicle (ev==1)
+    PL -> PL: check evCapacity
+    
+    alt Capacity available
+        PL -> PL: getEmptyEvSlot()
+        
+        alt Motor == 1
+            PL -> PL: Create ElectricBike(regnum, make, model, color)
+        else
+            PL -> PL: Create ElectricCar(regnum, make, model, color)
+        end
+        
+        PL -> DB: evSlots[slotid] = vehicle
+        PL -> PL: slotEvId++
+        PL -> PL: numOfOccupiedEvSlots++
+        
+        PL -> PL: Insert to GUI text field:\n"Allocated slot number: X"
+    else No capacity
+        PL -> PL: Insert to GUI:\n"Sorry, parking lot is full"
+    end
+    
+else Regular Vehicle (ev==0)
+    PL -> PL: check capacity
+    
+    alt Capacity available
+        PL -> PL: getEmptySlot()
+        
+        alt Motor == 1
+            PL -> PL: Create Motorcycle(regnum, make, model, color)
+        else
+            PL -> PL: Create Car(regnum, make, model, color)
+        end
+        
+        PL -> DB: slots[slotid] = vehicle
+        PL -> PL: slotid++
+        PL -> PL: numOfOccupiedSlots++
+        
+        PL -> PL: Insert to GUI text field:\n"Allocated slot number: X"
+    else No capacity
+        PL -> PL: Insert to GUI:\n"Sorry, parking lot is full"
+    end
+end
+
+deactivate PL
+
+GUI -> GUI: Display result in text field
+deactivate GUI
+
+note right of PL
+  PROBLEMS:
+  1. God class handles everything
+  2. Direct UI manipulation from business logic
+  3. No separation of concerns
+  4. Global state dependency
+  5. Hard to test
+  6. Tight coupling
+  7. Mixed responsibilities
+end note
+
+@enduml

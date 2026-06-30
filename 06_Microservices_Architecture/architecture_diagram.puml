@@ -1,0 +1,127 @@
+@startuml Microservices_Architecture_Diagram
+!define RECTANGLE class
+
+title EasyParkPlus - Microservices Architecture
+
+skinparam linetype ortho
+skinparam nodesep 80
+skinparam ranksep 80
+
+skinparam rectangle {
+    BackgroundColor<<Core>> LightBlue
+    BackgroundColor<<Supporting>> LightYellow
+    BackgroundColor<<Platform>> LightGreen
+    BackgroundColor<<External>> WhiteSmoke
+    BorderColor Black
+}
+
+skinparam database {
+    BackgroundColor White
+    BorderColor Black
+}
+
+' ===== TOP LAYER: Clients =====
+together {
+    actor "Client Apps" as Clients
+}
+
+' ===== API GATEWAY =====
+rectangle "API Gateway" <<Platform>> as Gateway
+
+' ===== MICROSERVICES LAYER =====
+together {
+    rectangle "Parking\nOperations" <<Core>> as Parking
+    rectangle "EV\nCharging" <<Core>> as Charging
+    rectangle "Customer\nManagement" <<Supporting>> as Customer
+    rectangle "Billing" <<Supporting>> as Billing
+    rectangle "Integration\nHub" <<Platform>> as Integration
+}
+
+' ===== EVENT BUS =====
+rectangle "Event Bus (Kafka)" <<Platform>> as EventBus
+
+' ===== DATABASE LAYER =====
+together {
+    database "parking_db" as DB1
+    database "charging_db" as DB2
+    database "customer_db" as DB3
+    database "billing_db" as DB4
+}
+
+' ===== EXTERNAL SYSTEMS =====
+together {
+    rectangle "Google/Apple\nMaps" <<External>> as Maps
+    rectangle "Payment\nGateway" <<External>> as Payment
+    rectangle "CRM" <<External>> as CRM
+    rectangle "Gate\nHardware" <<External>> as Gates
+}
+
+' ===== CONNECTIONS =====
+
+' Client to Gateway
+Clients --> Gateway
+
+' Gateway to Services
+Gateway --> Parking
+Gateway --> Charging
+Gateway --> Customer
+Gateway --> Billing
+
+' Services to Event Bus
+Parking --> EventBus : publish
+Charging --> EventBus : publish
+Customer --> EventBus : publish
+Billing --> EventBus : publish
+
+EventBus --> Integration : consume
+
+' Services to Databases
+Parking --> DB1
+Charging --> DB2
+Customer --> DB3
+Billing --> DB4
+
+' Integration Hub to External
+Integration --> Maps
+Integration --> Payment
+Integration --> CRM
+Integration --> Gates
+
+' Key Service Dependencies
+Parking ..> Customer : query
+Charging ..> Customer : query
+Parking ..> Billing : calculate
+Charging ..> Billing : calculate
+
+' Legend
+legend right
+  **Service Types:**
+  |<back:LightBlue>   </back>| Core Services (Revenue) |
+  |<back:LightYellow>   </back>| Supporting Services |
+  |<back:LightGreen>   </back>| Platform Services |
+  |<back:WhiteSmoke>   </back>| External Systems |
+  
+  **8 Microservices Total:**
+  • Parking Operations (facilities, reservations, slots)
+  • EV Charging (stations, sessions, monitoring)
+  • Customer Management (accounts, vehicles)
+  • Billing (fees, invoices, payments)
+  • Integration Hub (Maps, Payment, CRM, Gates)
+  • Notification Service (email, SMS, push)
+  • Analytics & Reporting (reports, statistics)
+  • Facility Management (config, maintenance)
+endlegend
+
+note top of EventBus
+  **Event-Driven Architecture**
+  Async communication between services
+  for loose coupling and scalability
+end note
+
+note bottom of DB1
+  **Database per Service Pattern**
+  Each service owns its data
+  for autonomy and scalability
+end note
+
+@enduml
